@@ -1,0 +1,17 @@
+database:
+  postgres:
+    username: postgres
+    password: postgres
+    host: localhost
+    port: 5432
+    dbname: kubeEP
+  redis:
+    host: localhost
+    port: 6379
+cors:
+  allow-origins:
+    - http://localhost:3000
+  allow-headers:
+    - Origin
+    - Content-Type
+    - Accept
