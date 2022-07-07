@@ -376,15 +376,19 @@ func (c *cron) Start() {
 						switch pendingEvent.Cluster.Datacenter.Datacenter {
 						case model.GCP:
 							go c.execGCPEvent(pendingEvent, db, ctx)
+
 						}
 					}
 				}
 			}()
 
 			go func() {
-				prescaledEvents, err := c.eventUC.GetAllPrescaledEvent10MinBeforeStart(db, now)
+				prescaledEvents, err := c.eventUC.GetAllPrescaledEvent(db, now)
 				if err != nil {
-					log.Errorf("[EventCronJob] Error getting prescaled events : %s", err.Error())
+					log.Errorf(
+						"[EventCronJob] Error getting prescaled events : %s",
+						err.Error(),
+					)
 				}
 				if len(prescaledEvents) != 0 && err == nil {
 					for _, prescaledEvent := range prescaledEvents {

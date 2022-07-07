@@ -873,11 +873,7 @@ func (c *cron) execGCPEvent(e *UCEntity.Event, db *gorm.DB, ctx context.Context)
 							),
 						)
 
-						newMaxNode := autoscalingData.MaxNodeCount
-
-						if maxNeededNode > 0 || int32(maxResources.CurrentNodeCount) == nodePoolObj.Autoscaling.MaxNodeCount {
-							newMaxNode += maxNeededNode + 5
-						}
+						newMaxNode := autoscalingData.MaxNodeCount + maxNeededNode
 
 						updatedNodePool.MaxNode = newMaxNode
 

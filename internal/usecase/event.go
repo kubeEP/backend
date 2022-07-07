@@ -30,6 +30,10 @@ type Event interface {
 		error,
 	)
 	FinishAllWatchedEvent(tx *gorm.DB, now time.Time) error
+	GetAllPrescaledEvent(tx *gorm.DB, now time.Time) (
+		[]*UCEntity.Event,
+		error,
+	)
 }
 
 type event struct {
@@ -59,6 +63,8 @@ func (e *event) RegisterEvents(tx *gorm.DB, eventData *UCEntity.Event) (uuid.UUI
 		StartTime:         eventData.StartTime,
 		EndTime:           eventData.EndTime,
 		CalculateNodePool: eventData.CalculateNodePool,
+		ExecuteConfigAt:   eventData.ExecuteConfigAt,
+		WatchingAt:        eventData.WatchingAt,
 	}
 	data.ClusterID.SetUUID(eventData.Cluster.ID)
 
@@ -77,6 +83,8 @@ func (e *event) GetEventByName(tx *gorm.DB, eventName string) (*UCEntity.Event, 
 	return &UCEntity.Event{
 		ID:                data.ID.GetUUID(),
 		Name:              data.Name,
+		ExecuteConfigAt:   data.ExecuteConfigAt,
+		WatchingAt:        data.WatchingAt,
 		StartTime:         data.StartTime,
 		EndTime:           data.EndTime,
 		CreatedAt:         data.CreatedAt,
@@ -98,6 +106,8 @@ func (e *event) GetEventByID(tx *gorm.DB, eventID uuid.UUID) (*UCEntity.Event, e
 		StartTime:         data.StartTime,
 		EndTime:           data.EndTime,
 		CreatedAt:         data.CreatedAt,
+		ExecuteConfigAt:   data.ExecuteConfigAt,
+		WatchingAt:        data.WatchingAt,
 		UpdatedAt:         data.UpdatedAt,
 		Status:            data.Status,
 		Message:           data.Message,
@@ -117,6 +127,8 @@ func (e *event) ListEventByClusterID(tx *gorm.DB, clusterID uuid.UUID) ([]UCEnti
 			output, UCEntity.Event{
 				ID:                event.ID.GetUUID(),
 				Name:              event.Name,
+				ExecuteConfigAt:   event.ExecuteConfigAt,
+				WatchingAt:        event.WatchingAt,
 				StartTime:         event.StartTime,
 				EndTime:           event.EndTime,
 				CreatedAt:         event.CreatedAt,
@@ -138,6 +150,8 @@ func (e *event) UpdateEvent(tx *gorm.DB, eventData *UCEntity.Event) error {
 		Status:            eventData.Status,
 		Message:           eventData.Message,
 		CalculateNodePool: eventData.CalculateNodePool,
+		ExecuteConfigAt:   eventData.ExecuteConfigAt,
+		WatchingAt:        eventData.WatchingAt,
 	}
 	data.CreatedAt = eventData.CreatedAt
 	data.UpdatedAt = eventData.UpdatedAt
@@ -177,6 +191,8 @@ func (e *event) GetDetailedEventData(tx *gorm.DB, eventID uuid.UUID) (
 			UpdatedAt:         eventData.UpdatedAt,
 			ID:                eventID,
 			Name:              eventData.Name,
+			ExecuteConfigAt:   eventData.ExecuteConfigAt,
+			WatchingAt:        eventData.WatchingAt,
 			StartTime:         eventData.StartTime,
 			Status:            eventData.Status,
 			Message:           eventData.Message,
@@ -216,16 +232,11 @@ func (e *event) DeleteEvent(tx *gorm.DB, id uuid.UUID) error {
 	return e.eventRepository.DeleteEvent(tx, id)
 }
 
-func (e *event) GetAllPendingExecutableEvent(tx *gorm.DB, now time.Time) (
+func (e *event) GetAllPrescaledEvent(tx *gorm.DB, now time.Time) (
 	[]*UCEntity.Event,
 	error,
 ) {
-	events, err := e.eventRepository.FindEventByStatusWithStarTimeBeforeMinuteAndClusterData(
-		tx,
-		model.EventPending,
-		60,
-		now,
-	)
+	events, err := e.eventRepository.FindEventByWatchingAt(tx, model.EventPrescaled, now)
 	if err != nil {
 		return nil, err
 	}
@@ -238,6 +249,39 @@ func (e *event) GetAllPendingExecutableEvent(tx *gorm.DB, now time.Time) (
 				ID:                event.ID.GetUUID(),
 				Status:            event.Status,
 				Name:              event.Name,
+				ExecuteConfigAt:   event.ExecuteConfigAt,
+				WatchingAt:        event.WatchingAt,
+				Message:           event.Message,
+				StartTime:         event.StartTime,
+				EndTime:           event.EndTime,
+				CalculateNodePool: event.CalculateNodePool,
+				Cluster:           UCEntity.ClusterData{Name: event.Cluster.Name, ID: event.ClusterID.GetUUID(), Datacenter: UCEntity.DatacenterDetailedData{Datacenter: event.Cluster.Datacenter.Datacenter}},
+			},
+		)
+	}
+
+	return eventsData, nil
+}
+
+func (e *event) GetAllPendingExecutableEvent(tx *gorm.DB, now time.Time) (
+	[]*UCEntity.Event,
+	error,
+) {
+	events, err := e.eventRepository.FindEventByExecuteConfigAt(tx, model.EventPending, now)
+	if err != nil {
+		return nil, err
+	}
+	var eventsData []*UCEntity.Event
+	for _, event := range events {
+		eventsData = append(
+			eventsData, &UCEntity.Event{
+				CreatedAt:         event.CreatedAt,
+				UpdatedAt:         event.UpdatedAt,
+				ID:                event.ID.GetUUID(),
+				Status:            event.Status,
+				Name:              event.Name,
+				ExecuteConfigAt:   event.ExecuteConfigAt,
+				WatchingAt:        event.WatchingAt,
 				Message:           event.Message,
 				StartTime:         event.StartTime,
 				EndTime:           event.EndTime,
@@ -272,6 +316,8 @@ func (e *event) GetAllPrescaledEvent10MinBeforeStart(tx *gorm.DB, now time.Time)
 				ID:                event.ID.GetUUID(),
 				Status:            event.Status,
 				Name:              event.Name,
+				ExecuteConfigAt:   event.ExecuteConfigAt,
+				WatchingAt:        event.WatchingAt,
 				Message:           event.Message,
 				StartTime:         event.StartTime,
 				EndTime:           event.EndTime,

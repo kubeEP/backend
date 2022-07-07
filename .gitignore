@@ -114,7 +114,6 @@ config/app.yaml
 app
 requests/*.http
 cron
-!internal/cron
 
 test.log
 skenario3.log
